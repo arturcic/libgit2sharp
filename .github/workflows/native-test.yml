@@ -1,0 +1,51 @@
+name: native-test
+on:
+  workflow_dispatch:
+jobs:
+  native_test:
+    name: Test on [${{ matrix.arch }}] net${{ matrix.sdk }} SDK - ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # arch: [ amd64, arm64 ]
+        # sdk:  [ '6.0', '5.0', '3.1' ]
+        # os:   [ alpine.3.12, alpine.3.13, alpine.3.14, centos.7, centos.8, debian.9, debian.10, debian.11, fedora.33, ubuntu.18.04, ubuntu.20.04 ]
+        arch: [ amd64 ]
+        sdk:  [ '6.0' ]
+        os:   [ debian.11 ]
+        # exclude:
+        # - arch: arm64
+        #   os: alpine.3.12
+        # - arch: arm64
+        #   os: alpine.3.13
+        #   sdk: '3.1'
+        # - arch: arm64
+        #   os: alpine.3.14
+        #   sdk: '3.1'
+        # - arch: arm64
+        #   os: centos.7
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2.3.4
+        with:
+            fetch-depth: 0
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v1
+        if: matrix.arch == 'arm64'
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+            install: true
+      - name: Build Docker Image
+        run: |
+            # [[ ${{ matrix.sdk }} = '3.1' ]] && target="netcoreapp${{ matrix.sdk }}" || target="net${{ matrix.sdk }}"
+
+            docker run --rm --platform linux/amd64 --name native-test -it -v "$(PWD):/app" gittools/build-images:debian.11-sdk-6.0 bash -c "dotnet test LibGit2Sharp.sln --framework net6.0"
+
+            # docker buildx build -t native-test --output type=docker -f Dockerfile \
+            #         --platform linux/${{ matrix.arch }} \
+            #         --build-arg DISTRO=${{ matrix.os }} \
+            #         --build-arg SDK=${{ matrix.sdk }} .
+
+            # docker run --rm --platform linux/${{ matrix.arch }} --name native-test --env TARGET=$target native-test
